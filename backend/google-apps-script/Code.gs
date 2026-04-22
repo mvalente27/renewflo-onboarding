@@ -22,26 +22,25 @@ function getTimezone() {
 function doPost(e) {
   try {
     const rootFolder = DriveApp.getFolderById(APP_CONFIG.rootFolderId);
-    const params = e && e.parameters ? e.parameters : {};
-    const files = e && e.files ? e.files : {};
+    const requestData = parseSubmissionRequest(e);
 
-    const submittedAtIso = firstValue(params.submittedAt) || new Date().toISOString();
+    const submittedAtIso = requestData.submittedAt || new Date().toISOString();
     const submittedAt = new Date(submittedAtIso);
     const stamp = Utilities.formatDate(submittedAt, getTimezone(), "yyyyMMdd_HHmmss");
 
-    const submitterName = firstValue(params.submitterName) || "Unknown";
-    const submitterEmail = firstValue(params.submitterEmail) || "Unknown";
+    const submitterName = requestData.submitterName || "Unknown";
+    const submitterEmail = requestData.submitterEmail || "Unknown";
 
     const destinationFolder = APP_CONFIG.createSubmissionSubfolder
       ? rootFolder.createFolder("Submission_" + stamp)
       : rootFolder;
 
-    const propertyKeys = collectPropertyKeys(params, files);
     const savedFiles = [];
     const propertyRows = [];
 
-    propertyKeys.forEach(function (propertyKey) {
-      const displayName = firstValue(params[propertyKey + "__name"]) || propertyKey;
+    requestData.properties.forEach(function (property, propertyIndex) {
+      const propertyKey = property.key || ("property_" + (propertyIndex + 1));
+      const displayName = firstValue(property.name) || propertyKey;
       const safePropertyName = sanitize(displayName) || propertyKey;
 
       const row = {
@@ -50,38 +49,38 @@ function doPost(e) {
         submitterEmail: submitterEmail,
         propertyKey: propertyKey,
         propertyName: displayName,
-        claims: firstValue(params[propertyKey + "__claims"]) || "",
-        claimsDetail: firstValue(params[propertyKey + "__claimsDetail"]) || "",
-        marketApproach: firstValue(params[propertyKey + "__marketApproach"]) || "",
-        deliveryFormat: firstValue(params[propertyKey + "__deliveryFormat"]) || "",
-        trustees: firstValue(params[propertyKey + "__trustees"]) || "",
-        otherContext: firstValue(params[propertyKey + "__otherContext"]) || ""
+        claims: firstValue(property.details && property.details.claims) || "",
+        claimsDetail: firstValue(property.claimsDetail) || "",
+        marketApproach: firstValue(property.details && property.details.marketApproach) || "",
+        deliveryFormat: firstValue(property.details && property.details.deliveryFormat) || "",
+        trustees: firstValue(property.trustees) || "",
+        otherContext: firstValue(property.otherContext) || ""
       };
 
       const perPropertyFolder = destinationFolder.createFolder(safePropertyName);
       row.folderId = perPropertyFolder.getId();
       row.folderUrl = perPropertyFolder.getUrl();
 
-      Object.keys(files).forEach(function (fieldName) {
-        if (!fieldName.startsWith(propertyKey + "__")) return;
+      (property.documents || []).forEach(function (document) {
+        const docTypeBase = sanitize(document.label || document.key) || "Document";
+        const files = Array.isArray(document.files) ? document.files : [];
 
-        const blobMeta = files[fieldName];
-        const docTypeRaw = fieldName.substring((propertyKey + "__").length);
-        const docType = sanitize(docTypeRaw) || "Document";
+        files.forEach(function (filePayload, fileIndex) {
+          const docType = files.length > 1 ? (docTypeBase + "_" + (fileIndex + 1)) : docTypeBase;
+          const blob = uploadToBlob(filePayload);
+          const ext = extensionFrom(firstValue(filePayload && filePayload.name) || blob.getName());
+          const dated = Utilities.formatDate(new Date(), getTimezone(), "yyyy-MM-dd");
+          const newName = safePropertyName + "_" + docType + "_" + dated + ext;
+          blob.setName(newName);
 
-        const blob = blobMeta.getBlob();
-        const ext = extensionFrom(blob.getName());
-        const dated = Utilities.formatDate(new Date(), getTimezone(), "yyyy-MM-dd");
-        const newName = safePropertyName + "_" + docType + "_" + dated + ext;
-        blob.setName(newName);
-
-        const file = perPropertyFolder.createFile(blob);
-        savedFiles.push({
-          propertyName: displayName,
-          docType: docType,
-          fileName: file.getName(),
-          fileId: file.getId(),
-          fileUrl: file.getUrl()
+          const file = perPropertyFolder.createFile(blob);
+          savedFiles.push({
+            propertyName: displayName,
+            docType: docType,
+            fileName: file.getName(),
+            fileId: file.getId(),
+            fileUrl: file.getUrl()
+          });
         });
       });
 
@@ -213,6 +212,91 @@ function collectPropertyKeys(params, files) {
   });
 
   return Object.keys(keys);
+}
+
+function parseSubmissionRequest(e) {
+  const params = e && e.parameters ? e.parameters : {};
+  const files = e && e.files ? e.files : {};
+  const postData = e && e.postData ? e.postData : null;
+  const contentType = String(postData && postData.type || "");
+
+  if (postData && postData.contents && /application\/json/i.test(contentType)) {
+    const payload = JSON.parse(postData.contents);
+    return {
+      submittedAt: firstValue(payload.submittedAt),
+      submitterName: firstValue(payload.submitterName),
+      submitterEmail: firstValue(payload.submitterEmail),
+      properties: Array.isArray(payload.properties) ? payload.properties : []
+    };
+  }
+
+  return parseLegacySubmissionRequest(params, files);
+}
+
+function parseLegacySubmissionRequest(params, files) {
+  const propertyKeys = collectPropertyKeys(params, files);
+  const properties = propertyKeys.map(function (propertyKey) {
+    const documentsByKey = {};
+
+    Object.keys(files || {}).forEach(function (fieldName) {
+      if (!fieldName.startsWith(propertyKey + "__")) return;
+
+      const rawDocKey = fieldName.substring((propertyKey + "__").length);
+      const docKey = rawDocKey.replace(/_\d+$/, "");
+      if (!documentsByKey[docKey]) {
+        documentsByKey[docKey] = {
+          key: docKey,
+          label: docKey,
+          files: []
+        };
+      }
+
+      documentsByKey[docKey].files.push(files[fieldName]);
+    });
+
+    return {
+      key: propertyKey,
+      name: firstValue(params[propertyKey + "__name"]) || propertyKey,
+      trustees: firstValue(params[propertyKey + "__trustees"]) || "",
+      otherContext: firstValue(params[propertyKey + "__otherContext"]) || "",
+      claimsDetail: firstValue(params[propertyKey + "__claimsDetail"]) || "",
+      details: {
+        claims: firstValue(params[propertyKey + "__claims"]) || "",
+        marketApproach: firstValue(params[propertyKey + "__marketApproach"]) || "",
+        deliveryFormat: firstValue(params[propertyKey + "__deliveryFormat"]) || ""
+      },
+      documents: Object.keys(documentsByKey).map(function (docKey) {
+        return documentsByKey[docKey];
+      })
+    };
+  });
+
+  return {
+    submittedAt: firstValue(params.submittedAt),
+    submitterName: firstValue(params.submitterName),
+    submitterEmail: firstValue(params.submitterEmail),
+    properties: properties
+  };
+}
+
+function uploadToBlob(filePayload) {
+  if (!filePayload) {
+    throw new Error("Missing file payload.");
+  }
+
+  if (typeof filePayload.getBlob === "function") {
+    return filePayload.getBlob();
+  }
+
+  if (filePayload.data) {
+    return Utilities.newBlob(
+      Utilities.base64Decode(filePayload.data),
+      filePayload.mimeType || "application/octet-stream",
+      filePayload.name || "upload"
+    );
+  }
+
+  throw new Error("Unsupported file payload received.");
 }
 
 function firstValue(v) {

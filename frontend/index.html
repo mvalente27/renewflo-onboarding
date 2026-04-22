@@ -207,38 +207,105 @@
       return value !== null;
     }
 
-    function hasAnyFiles(prop) {
-      return FORM_CONFIG.documents.some((doc) => {
-        if (doc.multiple) return prop.files[doc.key].length > 0;
-        return prop.files[doc.key] !== null;
+    function getCompletionChecks(prop) {
+      const checks = [];
+
+      checks.push(isNonEmpty(prop.name));
+      checks.push(hasTrustee(prop));
+
+      FORM_CONFIG.documents.forEach((doc) => {
+        if (doc.required) checks.push(docIsComplete(prop, doc));
       });
+
+      FORM_CONFIG.criticalDetails.forEach((field) => {
+        checks.push(isNonEmpty(prop.details[field.key]));
+      });
+
+      if (prop.details.claims === "yes") {
+        checks.push(isNonEmpty(prop.claimsDetail));
+      }
+
+      return checks;
     }
 
     function getTaskStats(prop) {
-      const requiredDocs = FORM_CONFIG.documents.filter((doc) => doc.required);
-      const completedRequiredDocs = requiredDocs.filter((doc) => docIsComplete(prop, doc)).length;
-      const completedDetails = FORM_CONFIG.criticalDetails.filter((field) => prop.details[field.key] !== null).length;
+      const checks = getCompletionChecks(prop);
+      return {
+        completed: checks.filter(Boolean).length,
+        total: checks.length
+      };
+    }
 
-      let completed = completedRequiredDocs + completedDetails;
-      let total = requiredDocs.length + FORM_CONFIG.criticalDetails.length;
-
-      total += 1;
-      if (isNonEmpty(prop.name)) completed += 1;
-
-      total += 1;
-      if (hasTrustee(prop)) completed += 1;
-
-      if (prop.details.claims === "yes") {
-        total += 1;
-        if (isNonEmpty(prop.claimsDetail)) completed += 1;
-      }
-
-      return { completed: completed, total: total };
+    function isPropertyComplete(prop) {
+      const stats = getTaskStats(prop);
+      return stats.completed === stats.total;
     }
 
     function isSubmittableProperty(prop) {
-      const stats = getTaskStats(prop);
-      return hasAnyFiles(prop) && stats.completed === stats.total;
+      return isPropertyComplete(prop);
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function () { resolve(String(reader.result || "")); };
+        reader.onerror = function () { reject(new Error("Failed to read file: " + (file && file.name ? file.name : "unknown"))); };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function serializeFile(file, fallbackName) {
+      const dataUrl = await readFileAsDataUrl(file);
+      const commaIndex = dataUrl.indexOf(",");
+      return {
+        name: file.name || fallbackName,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size || 0,
+        data: commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl
+      };
+    }
+
+    async function buildSubmissionPayload(validProperties) {
+      const propertiesPayload = await Promise.all(validProperties.map(async function (prop, idx) {
+        const fallbackName = "Property " + (idx + 1);
+        const documents = await Promise.all(FORM_CONFIG.documents.map(async function (doc) {
+          const selectedFiles = doc.multiple
+            ? prop.files[doc.key]
+            : (prop.files[doc.key] ? [prop.files[doc.key]] : []);
+
+          const files = await Promise.all(selectedFiles.map(function (file, fileIdx) {
+            return serializeFile(file, doc.key + "_" + (fileIdx + 1));
+          }));
+
+          return {
+            key: doc.key,
+            label: doc.label,
+            files: files
+          };
+        }));
+
+        return {
+          key: "property_" + (idx + 1),
+          name: prop.name || fallbackName,
+          trustees: prop.trusteeInfo || "",
+          otherContext: prop.otherContext || "",
+          claimsDetail: prop.claimsDetail || "",
+          details: {
+            claims: prop.details.claims || "",
+            marketApproach: prop.details.marketApproach || "",
+            deliveryFormat: prop.details.deliveryFormat || ""
+          },
+          documents: documents
+        };
+      }));
+
+      return {
+        submittedAt: new Date().toISOString(),
+        submitterName: submitter.name,
+        submitterEmail: submitter.email,
+        propertyCount: validProperties.length,
+        properties: propertiesPayload
+      };
     }
 
     function renderInfoTooltip(text) {
@@ -357,8 +424,7 @@
     }
 
     function checkCompletion(prop) {
-      const stats = getTaskStats(prop);
-      if (stats.completed === stats.total && !prop.confettiFired) {
+      if (isPropertyComplete(prop) && !prop.confettiFired) {
         prop.confettiFired = true;
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#2dd4bf", "#14b8a6", "#0f766e", "#f8fafc", "#1e293b"] });
         setTimeout(function () {
@@ -396,33 +462,7 @@
       icon.classList.add("hidden");
 
       try {
-        const formData = new FormData();
-        formData.append("submittedAt", new Date().toISOString());
-        formData.append("submitterName", submitter.name);
-        formData.append("submitterEmail", submitter.email);
-        formData.append("propertyCount", String(validProperties.length));
-
-        validProperties.forEach(function (prop, idx) {
-          const safeName = sanitize(prop.name || ("Property_" + (idx + 1)));
-          formData.append(safeName + "__name", prop.name || ("Property " + (idx + 1)));
-          formData.append(safeName + "__trustees", prop.trusteeInfo || "Not provided");
-          formData.append(safeName + "__otherContext", prop.otherContext || "Not provided");
-          formData.append(safeName + "__claimsDetail", prop.claimsDetail || "Not provided");
-
-          FORM_CONFIG.criticalDetails.forEach(function (field) {
-            formData.append(safeName + "__" + field.key, prop.details[field.key] || "Not answered");
-          });
-
-          FORM_CONFIG.documents.forEach(function (doc) {
-            if (doc.multiple) {
-              prop.files[doc.key].forEach(function (file, fileIdx) {
-                formData.append(safeName + "__" + doc.key + "_" + (fileIdx + 1), file);
-              });
-            } else if (prop.files[doc.key]) {
-              formData.append(safeName + "__" + doc.key, prop.files[doc.key]);
-            }
-          });
-        });
+        const payload = await buildSubmissionPayload(validProperties);
 
         if (FORM_CONFIG.submitEndpoint === "YOUR_WEB_APP_URL_HERE") {
           throw new Error("Missing Apps Script Web App URL in FORM_CONFIG.submitEndpoint.");
@@ -430,7 +470,10 @@
 
         const response = await fetch(FORM_CONFIG.submitEndpoint, {
           method: "POST",
-          body: formData
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
