@@ -1,0 +1,64 @@
+{
+  "submitEndpoint": "YOUR_WEB_APP_URL_HERE",
+  "requirePropertyName": true,
+  "acceptedFileTypes": ".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png",
+  "criticalDetails": [
+    {
+      "key": "claims",
+      "label": "Claims in past 5 years?",
+      "tooltip": "Used to understand risk profile before quoting.",
+      "options": [
+        { "value": "yes", "label": "Yes" },
+        { "value": "no", "label": "No" }
+      ]
+    },
+    {
+      "key": "marketApproach",
+      "label": "Market Approach",
+      "tooltip": "How you want marketing to proceed for this placement.",
+      "options": [
+        { "value": "keep", "label": "Keep Current Broker" },
+        { "value": "bid", "label": "Run Competitive Bid" }
+      ]
+    },
+    {
+      "key": "deliveryFormat",
+      "label": "Delivery Format",
+      "tooltip": "How you want recommendations delivered.",
+      "options": [
+        { "value": "email", "label": "Email" },
+        { "value": "video", "label": "Video Call" }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "key": "policy",
+      "label": "Property Policy",
+      "icon": "file-text",
+      "tooltip": "Current or most recent insurance policy.",
+      "required": true
+    },
+    {
+      "key": "deed",
+      "label": "Master Deed",
+      "icon": "home",
+      "tooltip": "Legal property governance document.",
+      "required": true
+    },
+    {
+      "key": "pnl",
+      "label": "Profit & Loss",
+      "icon": "bar-chart-3",
+      "tooltip": "Financial statement for this property.",
+      "required": true
+    },
+    {
+      "key": "lossRuns",
+      "label": "Loss Runs",
+      "icon": "trending-down",
+      "tooltip": "3-5 year claim history report.",
+      "required": true
+    }
+  ]
+}

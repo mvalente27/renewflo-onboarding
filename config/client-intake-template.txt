@@ -1,0 +1,41 @@
+CLIENT INTAKE TEMPLATE (fill this before go-live)
+
+Business + Branding
+- Company name:
+- Logo file provided (yes/no):
+- Brand accent color hex:
+- Success page message:
+- Follow-up email text/snippet:
+
+Squarespace
+- Site URL:
+- Squarespace login owner:
+- Page slug for onboarding (example: /onboarding):
+- Will page be embedded via Code Block or full custom page:
+
+Google Drive + Script
+- Google account used to deploy script:
+- Root Google Drive folder URL:
+- Root Google Drive folder ID:
+- Store each submission in a dated subfolder (yes/no):
+- Should uploads also be logged to Google Sheet (yes/no):
+
+Form Behavior
+- Require property name for completion (yes/no):
+- Required document types list:
+- Allowed file extensions:
+- Critical detail options for market approach:
+- Critical detail options for delivery format:
+- Trustee info required (yes/no):
+
+Operations
+- Notification email address for new submissions:
+- Target turnaround SLA for review:
+- Contact person for technical issues:
+
+Go-Live Validation
+- Test submission completed (yes/no):
+- 2+ property submission test completed (yes/no):
+- File rename format confirmed:
+- Folder structure confirmed:
+- Final sign-off by client:

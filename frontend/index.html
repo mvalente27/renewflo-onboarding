@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RenewFlo | Property Onboarding</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Inter", "sans-serif"] },
+          colors: {
+            accent: {
+              50: "#eff6ff",
+              100: "#dbeafe",
+              300: "#60a5fa",
+              400: "#60a5fa",
+              500: "#3b82f6",
+              600: "#2563eb",
+              700: "#1d4ed8",
+              900: "#1e3a8a"
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: "Inter", sans-serif; }
+    .brand-bg {
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 45%, #60a5fa 100%);
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px);
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-down { animation: slideDown 0.25s ease-out forwards; }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.45); }
+      50% { box-shadow: 0 0 0 7px rgba(251,191,36,0); }
+    }
+    .demo-banner { animation: pulse-border 2.3s infinite; }
+  </style>
+</head>
+<body class="text-black antialiased min-h-screen p-4 md:p-8 brand-bg flex flex-col items-center pt-10 gap-6">
+
+  <div class="max-w-[1200px] w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+    <header id="form-header" class="p-8 md:p-12 pb-8 border-b border-slate-100 relative overflow-hidden bg-white">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-accent-50 rounded-full blur-3xl -mr-20 -mt-20 z-0 pointer-events-none"></div>
+      <div class="relative z-10">
+        <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight mb-3">Property Onboarding</h1>
+        <p class="text-lg md:text-xl text-slate-500 max-w-3xl font-medium">Add one or many properties, upload documents, and submit everything in one pass.</p>
+      </div>
+    </header>
+
+    <div id="main-form-area" class="p-8 md:p-12 bg-slate-50/50">
+      <div class="bg-white border border-slate-200 rounded-xl p-5 mb-6">
+        <h3 class="text-sm font-bold text-slate-700 mb-4">Submitter Contact</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1.5">Your Name *</label>
+            <input id="submitter-name" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-accent-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1.5">Your Email *</label>
+            <input id="submitter-email" type="email" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-accent-500" />
+          </div>
+        </div>
+      </div>
+
+      <div id="properties-container" class="space-y-6"></div>
+
+      <div class="mt-8 pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        <button onclick="addProperty()" class="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+          <i data-lucide="plus" class="w-5 h-5"></i>
+          Add Another Property
+        </button>
+
+        <div class="w-full md:w-auto flex flex-col items-end gap-1">
+          <button id="submit-btn" onclick="submitDocuments()" class="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-accent-600 text-white font-bold rounded-xl hover:bg-accent-700 transition-all shadow-lg">
+            <i id="submit-icon" data-lucide="send" class="w-5 h-5"></i>
+            <span id="submit-text">Submit Documents</span>
+            <i id="submit-spinner" data-lucide="loader-2" class="w-5 h-5 animate-spin hidden"></i>
+          </button>
+          <div class="flex items-center gap-1.5 text-slate-400 text-xs font-semibold mt-1">
+            <i data-lucide="lock" class="w-3 h-3"></i>
+            256-bit Secure Encrypted Submission
+          </div>
+          <span id="submit-error" class="text-sm font-bold text-red-500 hidden animate-slide-down mt-1"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="success-area" class="hidden p-12 md:p-24 text-center bg-white relative overflow-hidden">
+      <div class="absolute inset-0 bg-accent-50 opacity-50 z-0"></div>
+      <div class="relative z-10 flex flex-col items-center justify-center space-y-6">
+        <div class="w-24 h-24 bg-accent-100 text-accent-600 rounded-full flex items-center justify-center mb-2 shadow-inner">
+          <i data-lucide="check-circle-2" class="w-12 h-12"></i>
+        </div>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900">Submission Successful!</h2>
+        <p class="text-lg text-slate-500 max-w-lg mx-auto font-medium">Thank you for uploading your documents. We will review and follow up with next steps.</p>
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button onclick="location.reload()" class="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-md">Return to Start</button>
+          <a href="https://www.renewflo.co" class="px-8 py-3 bg-white text-slate-800 font-bold rounded-xl border border-slate-300 hover:bg-slate-50 transition-colors shadow-sm">Homepage</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const FORM_CONFIG = {
+      submitEndpoint: "https://script.google.com/macros/s/AKfycbzBQmjlgq6ItFr5tgdrS8dsc4DAc1TBe8wOo3P6WjSFCVrInOCogNmEBqk0zrXd53XxaQ/exec",
+      homepageUrl: "https://www.renewflo.co",
+      requirePropertyName: true,
+      acceptedFileTypes: ".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png",
+      criticalDetails: [
+        {
+          key: "claims",
+          label: "Claims in last 5 years?",
+          tooltip: "If you have filed any insurance claims or had losses in the last 5 years. We will reach out to gather more information.",
+          options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]
+        },
+        {
+          key: "marketApproach",
+          label: "Market Approach",
+          tooltip: "We work with your current broker, or can introduce a pre-qualified specialist.",
+          options: [
+            { value: "likeCurrent", label: "Like Current Broker" },
+            { value: "newBroker", label: "Want a New Broker" },
+            { value: "doNotCare", label: "Do Not Care" }
+          ]
+        },
+        {
+          key: "deliveryFormat",
+          label: "Delivery Format",
+          tooltip: "How you want to receive your renewal summary",
+          options: [
+            { value: "email", label: "Email" },
+            { value: "video", label: "Video Call" }
+          ]
+        }
+      ],
+      documents: [
+        { key: "currentPolicies", label: "Current Policies", icon: "files", tooltip: "Upload one or many policy documents (property, umbrella, D&O, etc.).", required: true, multiple: true },
+        { key: "certificateOfInsurance", label: "Certificate of Insurance", icon: "shield-check", tooltip: "Required upload.", required: true, multiple: false },
+        { key: "budget", label: "Budget", icon: "wallet", tooltip: "Required upload.", required: true, multiple: false },
+        { key: "incomeStatement", label: "Income Statement (Trailing 12 Months)", icon: "line-chart", tooltip: "Required upload.", required: true, multiple: false },
+        { key: "lossRuns", label: "Loss Runs", icon: "trending-down", tooltip: "Optional upload.", required: false, multiple: false },
+        { key: "fireAlarmInspection", label: "Fire Alarm Inspection (Most Recent)", icon: "flame", tooltip: "Optional upload.", required: false, multiple: false },
+        { key: "sprinklerInspection", label: "Sprinkler Inspection (Most Recent)", icon: "droplets", tooltip: "Optional upload.", required: false, multiple: false }
+      ]
+    };
+
+    function mockFile(name, type) {
+      return { name: name, type: type || "application/pdf", size: 512000, isMock: true };
+    }
+
+    function newProperty() {
+      const files = {};
+      const details = {};
+      FORM_CONFIG.documents.forEach((doc) => { files[doc.key] = doc.multiple ? [] : null; });
+      FORM_CONFIG.criticalDetails.forEach((field) => { details[field.key] = null; });
+      return {
+        id: "prop_" + Date.now() + Math.random().toString(36).slice(2, 7),
+        name: "",
+        files: files,
+        details: details,
+        claimsDetail: "",
+        trusteeInfo: "",
+        otherContext: "",
+        collapsed: false,
+        confettiFired: false
+      };
+    }
+
+    let submitter = {
+      name: "",
+      email: ""
+    };
+
+    let properties = [newProperty()];
+
+    function sanitize(value) {
+      return String(value || "").trim().replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+    }
+
+    function isNonEmpty(value) {
+      return String(value || "").trim() !== "";
+    }
+
+    function hasTrustee(prop) {
+      return isNonEmpty(prop.trusteeInfo);
+    }
+
+    function docIsComplete(prop, doc) {
+      const value = prop.files[doc.key];
+      if (doc.multiple) return Array.isArray(value) && value.length > 0;
+      return value !== null;
+    }
+
+    function hasAnyFiles(prop) {
+      return FORM_CONFIG.documents.some((doc) => {
+        if (doc.multiple) return prop.files[doc.key].length > 0;
+        return prop.files[doc.key] !== null;
+      });
+    }
+
+    function getTaskStats(prop) {
+      const requiredDocs = FORM_CONFIG.documents.filter((doc) => doc.required);
+      const completedRequiredDocs = requiredDocs.filter((doc) => docIsComplete(prop, doc)).length;
+      const completedDetails = FORM_CONFIG.criticalDetails.filter((field) => prop.details[field.key] !== null).length;
+
+      let completed = completedRequiredDocs + completedDetails;
+      let total = requiredDocs.length + FORM_CONFIG.criticalDetails.length;
+
+      total += 1;
+      if (isNonEmpty(prop.name)) completed += 1;
+
+      total += 1;
+      if (hasTrustee(prop)) completed += 1;
+
+      if (prop.details.claims === "yes") {
+        total += 1;
+        if (isNonEmpty(prop.claimsDetail)) completed += 1;
+      }
+
+      return { completed: completed, total: total };
+    }
+
+    function isSubmittableProperty(prop) {
+      const stats = getTaskStats(prop);
+      return hasAnyFiles(prop) && stats.completed === stats.total;
+    }
+
+    function renderInfoTooltip(text) {
+      return '<span class="relative group/tooltip inline-flex ml-1 align-middle">'
+        + '<i data-lucide="info" class="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help"></i>'
+        + '<span class="opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible absolute left-5 -top-2 w-56 bg-slate-800 text-white text-xs rounded-lg p-2.5 shadow-xl transition-all duration-150 font-medium pointer-events-none z-30">'
+        + text + '</span></span>';
+    }
+
+    function setSubmitterFieldValues() {
+      document.getElementById("submitter-name").value = submitter.name;
+      document.getElementById("submitter-email").value = submitter.email;
+    }
+
+    function bindSubmitterInputs() {
+      const nameInput = document.getElementById("submitter-name");
+      const emailInput = document.getElementById("submitter-email");
+      nameInput.addEventListener("input", function () { submitter.name = nameInput.value; });
+      emailInput.addEventListener("input", function () { submitter.email = emailInput.value; });
+    }
+
+    function addProperty() {
+      properties.push(newProperty());
+      render();
+    }
+
+    function removeProperty(id) {
+      properties = properties.filter((p) => p.id !== id);
+      if (properties.length === 0) {
+        addProperty();
+        return;
+      }
+      render();
+    }
+
+    function toggleCollapse(id) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.collapsed = !prop.collapsed;
+      render();
+    }
+
+    function handleNameInput(event, id) {
+      const el = event.target;
+      el.value = el.value.split(" ").map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w)).join(" ");
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.name = el.value;
+      checkCompletion(prop);
+      renderProgressOnly(id);
+    }
+
+    function updateDetail(id, key, value) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.details[key] = value;
+      if (key === "claims" && value !== "yes") prop.claimsDetail = "";
+      checkCompletion(prop);
+      render();
+    }
+
+    function updateClaimsDetail(id, value) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.claimsDetail = value;
+      checkCompletion(prop);
+      renderProgressOnly(id);
+    }
+
+    function updateTrusteeInfo(id, value) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.trusteeInfo = value;
+      checkCompletion(prop);
+      renderProgressOnly(id);
+    }
+
+    function updateOtherContext(id, value) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      prop.otherContext = value;
+    }
+
+    function handleFileUpload(event, propId, fileKey) {
+      const prop = properties.find((p) => p.id === propId);
+      const doc = FORM_CONFIG.documents.find((d) => d.key === fileKey);
+      if (!prop || !doc) return;
+
+      if (doc.multiple) {
+        const selected = Array.from(event.target.files || []);
+        if (selected.length === 0) return;
+        prop.files[fileKey] = prop.files[fileKey].concat(selected);
+      } else {
+        const file = event.target.files[0];
+        if (!file) return;
+        prop.files[fileKey] = file;
+      }
+
+      checkCompletion(prop);
+      render();
+    }
+
+    function removeFile(propId, fileKey, fileIndex) {
+      const prop = properties.find((p) => p.id === propId);
+      const doc = FORM_CONFIG.documents.find((d) => d.key === fileKey);
+      if (!prop || !doc) return;
+
+      if (doc.multiple) {
+        prop.files[fileKey] = prop.files[fileKey].filter(function (_, idx) { return idx !== fileIndex; });
+      } else {
+        prop.files[fileKey] = null;
+      }
+
+      prop.confettiFired = false;
+      render();
+    }
+
+    function checkCompletion(prop) {
+      const stats = getTaskStats(prop);
+      if (stats.completed === stats.total && !prop.confettiFired) {
+        prop.confettiFired = true;
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ["#2dd4bf", "#14b8a6", "#0f766e", "#f8fafc", "#1e293b"] });
+        setTimeout(function () {
+          prop.collapsed = true;
+          render();
+        }, 1200);
+      }
+    }
+
+    async function submitDocuments() {
+      const errorMsg = document.getElementById("submit-error");
+      const submitBtn = document.getElementById("submit-btn");
+      const submitText = document.getElementById("submit-text");
+      const spinner = document.getElementById("submit-spinner");
+      const icon = document.getElementById("submit-icon");
+
+      if (!isNonEmpty(submitter.name) || !isNonEmpty(submitter.email)) {
+        errorMsg.textContent = "Please enter your name and email before submitting.";
+        errorMsg.classList.remove("hidden");
+        return;
+      }
+
+      const validProperties = properties.filter((p) => isSubmittableProperty(p));
+      if (validProperties.length === 0) {
+        errorMsg.textContent = "Please complete required fields for at least one property.";
+        errorMsg.classList.remove("hidden");
+        return;
+      }
+
+      errorMsg.classList.add("hidden");
+      submitBtn.disabled = true;
+      submitBtn.classList.add("opacity-75", "cursor-not-allowed");
+      submitText.textContent = "Uploading...";
+      spinner.classList.remove("hidden");
+      icon.classList.add("hidden");
+
+      try {
+        const formData = new FormData();
+        formData.append("submittedAt", new Date().toISOString());
+        formData.append("submitterName", submitter.name);
+        formData.append("submitterEmail", submitter.email);
+        formData.append("propertyCount", String(validProperties.length));
+
+        validProperties.forEach(function (prop, idx) {
+          const safeName = sanitize(prop.name || ("Property_" + (idx + 1)));
+          formData.append(safeName + "__name", prop.name || ("Property " + (idx + 1)));
+          formData.append(safeName + "__trustees", prop.trusteeInfo || "Not provided");
+          formData.append(safeName + "__otherContext", prop.otherContext || "Not provided");
+          formData.append(safeName + "__claimsDetail", prop.claimsDetail || "Not provided");
+
+          FORM_CONFIG.criticalDetails.forEach(function (field) {
+            formData.append(safeName + "__" + field.key, prop.details[field.key] || "Not answered");
+          });
+
+          FORM_CONFIG.documents.forEach(function (doc) {
+            if (doc.multiple) {
+              prop.files[doc.key].forEach(function (file, fileIdx) {
+                formData.append(safeName + "__" + doc.key + "_" + (fileIdx + 1), file);
+              });
+            } else if (prop.files[doc.key]) {
+              formData.append(safeName + "__" + doc.key, prop.files[doc.key]);
+            }
+          });
+        });
+
+        if (FORM_CONFIG.submitEndpoint === "YOUR_WEB_APP_URL_HERE") {
+          throw new Error("Missing Apps Script Web App URL in FORM_CONFIG.submitEndpoint.");
+        }
+
+        const response = await fetch(FORM_CONFIG.submitEndpoint, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error("Upload failed with status " + response.status);
+        }
+
+        confetti({ particleCount: 220, spread: 100, origin: { y: 0.65 } });
+        document.getElementById("form-header").classList.add("hidden");
+        document.getElementById("main-form-area").classList.add("hidden");
+        document.getElementById("success-area").classList.remove("hidden");
+      } catch (error) {
+        console.error(error);
+        errorMsg.textContent = "Upload failed. Please try again or contact info@renewflo.co.";
+        errorMsg.classList.remove("hidden");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("opacity-75", "cursor-not-allowed");
+        submitText.textContent = "Submit Documents";
+        spinner.classList.add("hidden");
+        icon.classList.remove("hidden");
+      }
+    }
+
+    function renderProgressOnly(id) {
+      const prop = properties.find((p) => p.id === id);
+      if (!prop) return;
+      const root = document.querySelector('[data-progress-id="' + id + '"]');
+      if (!root) return;
+      const stats = getTaskStats(prop);
+      const pct = Math.round((stats.completed / stats.total) * 100);
+
+      root.querySelectorAll("[data-progress-count]").forEach(function (node) {
+        node.textContent = stats.completed + " of " + stats.total + " Completed";
+        node.classList.toggle("text-accent-600", stats.completed === stats.total);
+        node.classList.toggle("text-slate-500", stats.completed !== stats.total);
+      });
+
+      const bar = root.querySelector("[data-progress-bar]");
+      if (bar) bar.style.width = pct + "%";
+    }
+
+    function renderUploadBox(prop, doc) {
+      const value = prop.files[doc.key];
+
+      if (doc.multiple && value.length > 0) {
+        const rows = value.map(function (file, idx) {
+          return '<div class="flex items-center justify-between gap-2 bg-white rounded-md px-2 py-1 border border-accent-200">'
+            + '<span class="text-xs text-accent-700 truncate" title="' + file.name + '">' + file.name + '</span>'
+            + '<button onclick="removeFile(\'' + prop.id + '\', \'' + doc.key + '\', ' + idx + ')" class="text-accent-600 hover:text-red-500">'
+            + '<i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>';
+        }).join("");
+
+        return '<div class="relative border-2 border-accent-500 bg-accent-50 rounded-xl p-4 flex flex-col gap-3 shadow-sm">'
+          + '<div class="flex items-center justify-between">'
+          + '<span class="text-sm font-bold text-slate-800">' + doc.label + (doc.required ? ' *' : '') + '</span>'
+          + '<label class="text-xs font-bold text-accent-700 cursor-pointer">+ Add More'
+          + '<input type="file" class="hidden" multiple onchange="handleFileUpload(event, \'' + prop.id + '\', \'' + doc.key + '\')" accept="' + FORM_CONFIG.acceptedFileTypes + '" />'
+          + '</label></div><div class="space-y-1.5 max-h-28 overflow-auto">' + rows + '</div></div>';
+      }
+
+      if (!doc.multiple && value) {
+        return '<div class="relative border-2 border-accent-500 bg-accent-50 rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-sm">'
+          + '<button onclick="removeFile(\'' + prop.id + '\', \'' + doc.key + '\')" class="absolute top-2 right-2 text-accent-600 bg-white hover:bg-red-500 hover:text-white border border-accent-200 rounded-full p-1.5 transition-all shadow-sm z-10">'
+          + '<i data-lucide="x" class="w-4 h-4"></i></button>'
+          + '<div class="w-12 h-12 bg-white text-accent-600 rounded-full flex items-center justify-center mb-3 shadow-sm border border-accent-100">'
+          + '<i data-lucide="check" class="w-6 h-6"></i></div>'
+          + '<span class="text-sm font-bold text-slate-800 mb-1">' + doc.label + (doc.required ? ' *' : '') + '</span>'
+          + '<span class="text-xs text-accent-700 font-medium truncate w-full px-2" title="' + value.name + '">' + value.name + '</span>'
+          + (value.isMock ? '<span class="text-[10px] text-amber-500 font-bold mt-1">DEMO FILE</span>' : '')
+          + '</div>';
+      }
+
+      return '<label class="relative border-2 border-dashed border-slate-300 bg-white hover:bg-slate-50 hover:border-accent-400 hover:shadow-sm rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all group/box">'
+        + '<div class="absolute top-3 left-3 z-20 group/tooltip">'
+        + '<i data-lucide="help-circle" class="w-4 h-4 text-slate-300 hover:text-slate-500 cursor-help"></i>'
+        + '<div class="opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible absolute left-6 -top-1 w-52 bg-slate-800 text-white text-xs rounded-lg p-2.5 shadow-xl transition-all duration-200 font-medium pointer-events-none text-left z-30">' + doc.tooltip + '</div></div>'
+        + '<input type="file" class="hidden" ' + (doc.multiple ? 'multiple' : '') + ' onchange="handleFileUpload(event, \'' + prop.id + '\', \'' + doc.key + '\')" accept="' + FORM_CONFIG.acceptedFileTypes + '" />'
+        + '<div class="w-12 h-12 bg-slate-50 text-slate-400 group-hover/box:text-accent-500 group-hover/box:bg-accent-50 rounded-full flex items-center justify-center mb-3 border border-slate-200 group-hover/box:border-accent-200 transition-colors">'
+        + '<i data-lucide="' + doc.icon + '" class="w-6 h-6"></i></div>'
+        + '<span class="text-sm font-bold text-slate-700 group-hover/box:text-accent-600 transition-colors">' + doc.label + (doc.required ? ' *' : '') + '</span>'
+        + '<span class="text-xs text-slate-400 mt-1 font-medium">' + (doc.multiple ? 'Click to upload one or many' : 'Click to upload') + '</span></label>';
+    }
+
+    function render() {
+      const container = document.getElementById("properties-container");
+
+      container.innerHTML = properties.map(function (prop, index) {
+        const stats = getTaskStats(prop);
+        const pct = Math.round((stats.completed / stats.total) * 100);
+        const done = stats.completed === stats.total;
+
+        if (prop.collapsed) {
+          return '<div class="' + (done ? 'border-accent-400 bg-accent-50' : 'border-slate-200 bg-white') + ' border-2 rounded-2xl p-4 md:p-6 shadow-sm relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors animate-slide-down group" onclick="toggleCollapse(\'' + prop.id + '\')">'
+            + '<div class="flex items-center gap-4 w-full"><div class="w-10 h-10 ' + (done ? 'bg-accent-500' : 'bg-slate-200') + ' text-white rounded-full flex items-center justify-center shadow-md shrink-0">'
+            + '<i data-lucide="' + (done ? 'check' : 'minus') + '" class="w-5 h-5 ' + (!done ? 'text-slate-400' : '') + '"></i></div>'
+            + '<div class="flex-grow min-w-0"><h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Property ' + (index + 1) + '</h3>'
+            + '<p class="text-base md:text-lg font-bold text-slate-800 truncate">' + (prop.name || 'Address Not Provided') + '</p></div></div>'
+            + '<div data-progress-id="' + prop.id + '" class="flex items-center justify-between w-full md:w-auto md:justify-end gap-6 border-t border-slate-200 md:border-0 pt-3 md:pt-0">'
+            + '<div class="flex flex-col items-start md:items-end"><span data-progress-count class="text-xs font-bold ' + (done ? 'text-accent-600' : 'text-slate-500') + ' mb-1">' + stats.completed + ' of ' + stats.total + ' Completed</span>'
+            + '<div class="w-32 bg-slate-200 rounded-full h-1.5 overflow-hidden"><div data-progress-bar class="bg-accent-500 h-1.5 rounded-full" style="width:' + pct + '%"></div></div></div>'
+            + '<button class="text-slate-500 font-bold flex items-center gap-1 hover:text-accent-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition-colors">Edit <i data-lucide="chevron-down" class="w-4 h-4"></i></button>'
+            + '</div></div>';
+        }
+
+        const detailControls = FORM_CONFIG.criticalDetails.map(function (field) {
+          const cols = field.options.length === 3 ? "3" : String(Math.min(field.options.length, 2));
+          const optionButtons = field.options.map(function (opt) {
+            return '<label class="relative block"><input type="radio" name="' + field.key + '_' + prop.id + '" value="' + opt.value + '" class="peer hidden" onchange="updateDetail(\'' + prop.id + '\', \'' + field.key + '\', this.value)" ' + (prop.details[field.key] === opt.value ? 'checked' : '') + '>'
+              + '<div class="border border-slate-200 bg-white rounded-lg px-2.5 py-2.5 text-center cursor-pointer peer-checked:border-accent-500 peer-checked:bg-accent-50 peer-checked:text-accent-700 peer-checked:ring-1 peer-checked:ring-accent-500 text-xs font-semibold transition-all text-slate-600 hover:bg-slate-50 shadow-sm">' + opt.label + '</div></label>';
+          }).join("");
+
+          const claimsBox = field.key === "claims" && prop.details.claims === "yes"
+            ? '<div class="mt-3"><label class="block text-xs font-bold text-slate-600 mb-1.5">Year and Claim Details *</label><textarea rows="3" placeholder="Enter year(s) and brief claim details" oninput="updateClaimsDetail(\'' + prop.id + '\', this.value)" class="w-full border border-slate-200 bg-white rounded-lg px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-accent-500">' + (prop.claimsDetail || '') + '</textarea></div>'
+            : '';
+
+          return '<div><label class="block text-xs font-bold text-slate-600 mb-2">' + field.label + renderInfoTooltip(field.tooltip) + '</label>'
+            + '<div class="grid grid-cols-' + cols + ' gap-2">' + optionButtons + '</div>' + claimsBox + '</div>';
+        }).join("");
+
+        const documentsHtml = FORM_CONFIG.documents.map(function (doc) { return renderUploadBox(prop, doc); }).join("");
+
+        return '<div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm relative animate-slide-down">'
+          + '<div class="absolute top-6 right-6 flex items-center gap-2 z-10"><button onclick="toggleCollapse(\'' + prop.id + '\')" class="text-slate-400 hover:bg-slate-50 hover:text-slate-700 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="Collapse"><i data-lucide="chevron-up" class="w-5 h-5"></i></button>'
+          + (properties.length > 1 ? '<button onclick="removeProperty(\'' + prop.id + '\')" class="text-slate-400 hover:bg-red-50 hover:text-red-600 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Remove"><i data-lucide="trash-2" class="w-5 h-5"></i></button>' : '')
+          + '</div>'
+          + '<div class="mb-6 pr-24"><h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Property ' + (index + 1) + '</h3>'
+          + '<label class="block text-sm font-bold text-slate-700 mb-2">Property Name or Address *</label>'
+          + '<input type="text" value="' + (prop.name || '') + '" oninput="handleNameInput(event, \'' + prop.id + '\')" placeholder="e.g., Oceanview Condominiums" class="w-full md:w-2/3 lg:w-1/2 border-2 border-slate-200 rounded-xl px-4 py-3 focus:ring-0 focus:border-accent-500 outline-none text-slate-900 transition-colors font-medium text-lg placeholder:text-slate-300 shadow-sm" /></div>'
+          + '<div data-progress-id="' + prop.id + '" class="mb-8 bg-slate-50 p-5 rounded-xl border border-slate-100"><div class="flex justify-between items-center text-sm mb-3"><div class="flex items-center gap-2"><i data-lucide="check-square" class="w-4 h-4 text-slate-400"></i><span class="font-bold text-slate-700">Property Tasks</span></div><span data-progress-count class="font-extrabold ' + (done ? 'text-accent-600' : 'text-slate-500') + ' bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">' + stats.completed + ' of ' + stats.total + ' Completed</span></div><div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden"><div data-progress-bar class="bg-accent-500 h-2.5 rounded-full transition-all duration-700 ease-out" style="width:' + pct + '%"></div></div></div>'
+          + '<div class="flex flex-col lg:flex-row gap-8"><div class="flex-grow"><h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i data-lucide="file-up" class="w-4 h-4 text-accent-500"></i> Property Documents</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">' + documentsHtml + '</div></div>'
+          + '<div class="w-full lg:w-[28rem] shrink-0"><h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i data-lucide="help-circle" class="w-4 h-4 text-accent-500"></i> Critical Details</h4><div class="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-6">'
+          + detailControls
+          + '<div><label class="block text-xs font-bold text-slate-600 mb-2">Condo Trustee Names / Emails ' + renderInfoTooltip('Optional list for key contacts.') + '</label><textarea rows="3" placeholder="Jane Smith - jane@hoa.org" oninput="updateTrusteeInfo(\'' + prop.id + '\', this.value)" class="w-full border border-slate-200 bg-white rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-accent-500">' + (prop.trusteeInfo || '') + '</textarea></div>'
+          + '<div><label class="block text-xs font-bold text-slate-600 mb-2">Other Important Context & Information ' + renderInfoTooltip('Optional paragraph for any notes you want us to consider.') + '</label><textarea rows="4" placeholder="Need renewal summary no later than January 1st" oninput="updateOtherContext(\'' + prop.id + '\', this.value)" class="w-full border border-slate-200 bg-white rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-accent-500">' + (prop.otherContext || '') + '</textarea></div>'
+          + '</div></div></div></div>';
+      }).join("");
+
+      lucide.createIcons();
+      setSubmitterFieldValues();
+      bindSubmitterInputs();
+    }
+
+    document.addEventListener("DOMContentLoaded", render);
+  </script>
+</body>
+</html>

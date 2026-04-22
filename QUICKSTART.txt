@@ -1,0 +1,31 @@
+CLIENT ONBOARDING PREBUILT - QUICKSTART
+
+1) Frontend
+- Open frontend/index.html in browser for local preview.
+- Replace logo file reference in frontend/index.html:
+  src="YOUR_LOGO.png"
+- Update FORM_CONFIG in frontend/index.html for required docs/options.
+
+2) Backend (Google Apps Script)
+- Create a new Apps Script project in a Google account controlled by client.
+- Copy backend/google-apps-script/Code.gs into script editor.
+- Copy backend/google-apps-script/appsscript.json manifest.
+- Set APP_CONFIG.rootFolderId in Code.gs.
+- Deploy as Web App:
+  access = Anyone
+  execute as = User deploying
+- Copy deployed web app URL.
+
+3) Integrate
+- Paste deployed URL into frontend/index.html FORM_CONFIG.submitEndpoint.
+- Submit a test payload with 2 properties and multiple docs.
+
+4) Squarespace publish
+- Add a new page and insert a Code Block.
+- Paste full contents of frontend/index.html.
+- Save and test on desktop + mobile.
+
+5) Handoff
+- Fill out config/client-intake-template.txt
+- Confirm file naming convention:
+  PropertyName_DocumentType_YYYY-MM-DD.ext
